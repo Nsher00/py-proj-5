@@ -42,9 +42,52 @@ def show_user(user_id):
     return render_template('user_details.html', user = user)
 
 @app.route('/users', methods=['POST'])
-def register_user(email,password):
+def register_user():
     """Creates a new user"""
-    user = crud.User()
+    email = request.form["email"]
+    password = request.form["password"]
+    user = crud.get_user_by_email(email)
+
+    if user:
+        flash('User alredy exsists')
+        return redirect('/')
+    else:
+        user = crud.create_user(email, password)
+        db.session.add(user)
+        db.session.commit()
+        flash("Account created! Please login.")
+        return redirect('/')
+
+@app.route('/login', methods=['POST'])
+def login():
+    email = request.form['email']
+    password = request.form['password']
+
+    user = crud.get_user_by_email(email)
+
+    if user:
+        session["user_email"] = user.email
+        flash(f"Successfully logged in as {user.email}")
+    else: 
+        flash('username or password was incorrect please try again.')
+
+    return redirect("/")        
+
+@app.route("/rating/<movie_id>", methods=["POST"])
+def rate_movie(movie_id):
+    user = crud.get_user_by_email(session["user_email"])
+    movie = crud.get_movie_by_id(movie_id)
+
+    score = int(request.form["rating"])
+
+    new_rating = crud.create_rating(score, user, movie)
+
+    db.session.add(new_rating)
+    db.session.commit()
+
+    return redirect(f'/movies/{movie.movie_id}')
+
+
 
 if __name__ == "__main__":
     connect_to_db(app)
